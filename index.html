@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bestellungen - TiJa Eiscafé</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+  <style>
+    body { font-family: 'Arial', sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    h1 { text-align: center; color: #2e7d32; }
+    input, select, button { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>🍦 Willkommen im TiJa Eiscafé!</h1>
+  <label for="name">Dein Name:</label>
+  <input type="text" id="name" placeholder="Gib deinen Namen ein" required />
+
+  <fieldset>
+    <legend>Wähle deine Eissorten:</legend>
+    <label><input type="checkbox" class="ice" value="Schokolade"> Schokolade</label>
+    <label><input type="checkbox" class="ice" value="Vanille"> Vanille</label>
+    <label><input type="checkbox" class="ice" value="Erdbeere"> Erdbeere</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Wähle die Anzahl der Bällchen:</legend>
+    <select id="scoops">
+      <option value="1">1 Kugel</option>
+      <option value="2">2 Kugeln</option>
+      <option value="3">3 Kugeln</option>
+      <option value="4">4 Kugeln</option>
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <legend>Wähle deine Toppings:</legend>
+    <label><input type="checkbox" class="topping" value="Schokostreusel"> Schokostreusel</label>
+    <label><input type="checkbox" class="topping" value="Waffeln"> Waffeln</label>
+    <label><input type="checkbox" class="topping" value="Karamellsauce"> Karamellsauce</label>
+    <label><input type="checkbox" class="topping" value="Streusel"> Bunte Streusel</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Getränkewahl:</legend>
+    <label><input type="radio" name="drinkChoice" value="keine" onclick="toggleDrinks(false)"> Kein Getränk</label>
+    <label><input type="radio" name="drinkChoice" value="getraenke" onclick="toggleDrinks(true)"> Ich möchte ein Getränk</label>
+  </fieldset>
+
+  <div id="drinksMenu" class="hidden">
+    <select id="drinks">
+      <option value="Cola">Cola</option>
+      <option value="Wasser">Wasser</option>
+      <option value="Limo">Limo</option>
+    </select>
+  </div>
+
+  <button onclick="sendOrder()">Bestellen 📝</button>
+
+  <p id="status"></p>
+
+  <script>
+    // Supabase initialisieren
+    const supabaseClient = window.supabase.createClient(
+       'https://bkrkztfybcmccwjjufym.supabase.co',
+       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrcmt6dGZ5YmNtY2N3amp1ZnltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTk0OTAsImV4cCI6MjA2NTQ5NTQ5MH0.Wrtn346kdT51S7xyr2eN97idN7pkMGFhmAMLzW_-pvU'
+    );
+    document.addEventListener('DOMContentLoaded', () => {
+      // Button erstellen
+      const onlyDrinkBtn = document.createElement('input');
+      onlyDrinkBtn.type = "radio";
+      onlyDrinkBtn.name = "drinkChoice";
+      onlyDrinkBtn.value = "nur_getraenk";
+      onlyDrinkBtn.id = "onlyDrinkBtn";
+
+      // Stil wie die anderen Radio-Optionen
+      const onlyDrinkLabel = document.createElement('label');
+      onlyDrinkLabel.appendChild(onlyDrinkBtn);
+      onlyDrinkLabel.appendChild(document.createTextNode(" Ich möchte nur ein Getränk"));
+
+      // Button innerhalb des Getränkewahl-Feldsets einfügen
+      const drinkFieldset = document.querySelectorAll('fieldset')[3];
+      drinkFieldset.appendChild(onlyDrinkLabel);
+
+      // Klick-Handler: Nur Getränk auswählen, Eis und Toppings abwählen, Kugelanzahl auf 1
+      onlyDrinkBtn.addEventListener('click', () => {
+        toggleDrinks(true);
+        document.querySelectorAll(".ice, .topping").forEach(cb => cb.checked = false);
+        document.getElementById('scoops').value = "1";
+      });
+
+      // Getränkewahl auf Getränk setzen und Menü anzeigen
+      document.querySelector('input[name="drinkChoice"][value="getraenke"]').checked = true;
+      toggleDrinks(true);
+      // Alle Eis- und Topping-Checkboxen abwählen
+      document.querySelectorAll(".ice, .topping").forEach(cb => cb.checked = false);
+      // Kugelanzahl auf 1 setzen
+      document.getElementById('scoops').value = "1";
+    });
+    // Funktion, um das Getränkemenü zu zeigen/auszublenden
+    function toggleDrinks(show) {
+      const drinksMenu = document.getElementById('drinksMenu');
+      if (show) {
+        drinksMenu.classList.remove('hidden');
+      } else {
+        drinksMenu.classList.add('hidden');
+      }
+    }
+
+    // Bestellungsabsendung
+    async function sendOrder() {
+      const name = document.getElementById('name').value.trim();
+      const ice = Array.from(document.querySelectorAll(".ice:checked")).map(el => el.value).join(", ");
+      const scoops = document.getElementById('scoops').value;
+      const toppings = Array.from(document.querySelectorAll(".topping:checked")).map(el => el.value).join(", ");
+      const drinkChoice = document.querySelector('input[name="drinkChoice"]:checked')?.value;
+      const drinks = drinkChoice === 'getraenke' ? document.getElementById('drinks').value : null;
+
+      if (!name) {
+        document.getElementById("status").innerText = "❗ Bitte gib deinen Namen ein.";
+        return;
+      }
+
+      // Bestellung an Supabase senden
+      const { error } = await supabaseClient.from('orders').insert([
+        { name, ice, scoops, toppings, drinks }
+      ]);
+
+      document.getElementById("status").innerText = error
+        ? "❌ Fehler beim Speichern"
+        : "✅ Bestellung erfolgreich abgesendet!";
+
+      if (!error) {
+        // Form zurücksetzen
+        document.getElementById('name').value = "";
+        document.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = false);
+        document.getElementById('drinks').value = "";
+        toggleDrinks(false);  // Getränkemenü ausblenden
+        setTimeout(() => { document.getElementById("status").innerText = ""; }, 3000);
+      }
+    }
+  </script>
+
+</body>
+</html>
